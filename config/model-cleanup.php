@@ -1,5 +1,7 @@
 <?php
 
+use App\Services\Models\WebhookCall;
+
 return [
 
     /*
@@ -7,6 +9,6 @@ return [
      * will be cleaned.
      */
     'models' => [
-        App\Services\Models\WebhookCall::class,
+        WebhookCall::class,
     ],
 ];

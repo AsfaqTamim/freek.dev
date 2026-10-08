@@ -20,10 +20,10 @@ class ApproveLink extends Action
     public function handle(ActionFields $fields, Collection $models)
     {
         $models->each(function (Link $link) use ($fields) {
-            (new ApproveLinkAction())->execute($link);
+            (new ApproveLinkAction)->execute($link);
 
             if ($fields->also_create_post) {
-                (new CreatePostFromLinkAction())->execute($link);
+                (new CreatePostFromLinkAction)->execute($link);
             }
         });
 

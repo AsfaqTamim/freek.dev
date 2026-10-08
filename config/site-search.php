@@ -1,5 +1,9 @@
 <?php
 
+use App\Services\Search\Indexer;
+use App\Services\Search\SearchProfile;
+use Spatie\SiteSearch\Drivers\MeiliSearchDriver;
+
 return [
     /*
      * When crawling your site, we will ignore content that is on these URLs.
@@ -54,7 +58,7 @@ return [
      * This profile will be used when none is specified in the `profile_class` attribute
      * of a `SiteSearchIndex` model.
      */
-    'default_profile' => App\Services\Search\SearchProfile::class,
+    'default_profile' => SearchProfile::class,
 
     /*
      * An indexer is a class that is responsible for converting the content of a page
@@ -63,11 +67,11 @@ return [
      * This indexer will be used when none is specified in the `profile_class` attribute
      * of a `SiteSearchIndex` model.
      */
-    'default_indexer' => App\Services\Search\Indexer::class,
+    'default_indexer' => Indexer::class,
 
     /*
      * A driver is responsible for writing all scraped content
      * to a search index.
      */
-    'default_driver' => Spatie\SiteSearch\Drivers\MeiliSearchDriver::class,
+    'default_driver' => MeiliSearchDriver::class,
 ];

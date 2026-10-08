@@ -1,5 +1,77 @@
 <?php
 
+use Spatie\Mailcoach\Domain\Audience\Actions\Subscribers\ConfirmSubscriberAction;
+use Spatie\Mailcoach\Domain\Audience\Actions\Subscribers\CreateSubscriberAction;
+use Spatie\Mailcoach\Domain\Audience\Actions\Subscribers\DeleteSubscriberAction;
+use Spatie\Mailcoach\Domain\Audience\Actions\Subscribers\ImportSubscribersAction;
+use Spatie\Mailcoach\Domain\Audience\Actions\Subscribers\SendConfirmSubscriberMailAction;
+use Spatie\Mailcoach\Domain\Audience\Actions\Subscribers\SendWelcomeMailAction;
+use Spatie\Mailcoach\Domain\Audience\Actions\Subscribers\UpdateSubscriberAction;
+use Spatie\Mailcoach\Domain\Audience\Models\EmailList;
+use Spatie\Mailcoach\Domain\Audience\Models\Subscriber;
+use Spatie\Mailcoach\Domain\Automation\Actions\SendAutomationMailsAction;
+use Spatie\Mailcoach\Domain\Automation\Actions\SendAutomationMailTestAction;
+use Spatie\Mailcoach\Domain\Automation\Actions\SendAutomationMailToSubscriberAction;
+use Spatie\Mailcoach\Domain\Automation\Actions\ShouldAutomationRunForSubscriberAction;
+use Spatie\Mailcoach\Domain\Automation\Models\Action;
+use Spatie\Mailcoach\Domain\Automation\Models\ActionSubscriber;
+use Spatie\Mailcoach\Domain\Automation\Models\Automation;
+use Spatie\Mailcoach\Domain\Automation\Models\AutomationMail;
+use Spatie\Mailcoach\Domain\Automation\Models\AutomationMailClick;
+use Spatie\Mailcoach\Domain\Automation\Models\AutomationMailLink;
+use Spatie\Mailcoach\Domain\Automation\Models\AutomationMailOpen;
+use Spatie\Mailcoach\Domain\Automation\Models\AutomationMailUnsubscribe;
+use Spatie\Mailcoach\Domain\Automation\Models\Trigger;
+use Spatie\Mailcoach\Domain\Automation\Support\Actions\AddTagsAction;
+use Spatie\Mailcoach\Domain\Automation\Support\Actions\ConditionAction;
+use Spatie\Mailcoach\Domain\Automation\Support\Actions\HaltAction;
+use Spatie\Mailcoach\Domain\Automation\Support\Actions\RemoveTagsAction;
+use Spatie\Mailcoach\Domain\Automation\Support\Actions\SendAutomationMailAction;
+use Spatie\Mailcoach\Domain\Automation\Support\Actions\SplitAction;
+use Spatie\Mailcoach\Domain\Automation\Support\Actions\UnsubscribeAction;
+use Spatie\Mailcoach\Domain\Automation\Support\Actions\WaitAction;
+use Spatie\Mailcoach\Domain\Automation\Support\Replacers\AutomationMailNameAutomationMailReplacer;
+use Spatie\Mailcoach\Domain\Automation\Support\Replacers\WebviewAutomationMailReplacer;
+use Spatie\Mailcoach\Domain\Automation\Support\Triggers\DateTrigger;
+use Spatie\Mailcoach\Domain\Automation\Support\Triggers\NoTrigger;
+use Spatie\Mailcoach\Domain\Automation\Support\Triggers\SubscribedTrigger;
+use Spatie\Mailcoach\Domain\Automation\Support\Triggers\TagAddedTrigger;
+use Spatie\Mailcoach\Domain\Automation\Support\Triggers\TagRemovedTrigger;
+use Spatie\Mailcoach\Domain\Automation\Support\Triggers\WebhookTrigger;
+use Spatie\Mailcoach\Domain\Campaign\Actions\ConvertHtmlToTextAction;
+use Spatie\Mailcoach\Domain\Campaign\Actions\PersonalizeHtmlAction;
+use Spatie\Mailcoach\Domain\Campaign\Actions\PersonalizeSubjectAction;
+use Spatie\Mailcoach\Domain\Campaign\Actions\PrepareEmailHtmlAction;
+use Spatie\Mailcoach\Domain\Campaign\Actions\PrepareSubjectAction;
+use Spatie\Mailcoach\Domain\Campaign\Actions\PrepareWebviewHtmlAction;
+use Spatie\Mailcoach\Domain\Campaign\Actions\RetrySendingFailedSendsAction;
+use Spatie\Mailcoach\Domain\Campaign\Actions\SendCampaignAction;
+use Spatie\Mailcoach\Domain\Campaign\Actions\SendCampaignTestAction;
+use Spatie\Mailcoach\Domain\Campaign\Actions\SendMailAction;
+use Spatie\Mailcoach\Domain\Campaign\Models\Campaign;
+use Spatie\Mailcoach\Domain\Campaign\Models\CampaignClick;
+use Spatie\Mailcoach\Domain\Campaign\Models\CampaignLink;
+use Spatie\Mailcoach\Domain\Campaign\Models\CampaignOpen;
+use Spatie\Mailcoach\Domain\Campaign\Models\CampaignUnsubscribe;
+use Spatie\Mailcoach\Domain\Campaign\Models\Template;
+use Spatie\Mailcoach\Domain\Campaign\Support\Replacers\CampaignNameCampaignReplacer;
+use Spatie\Mailcoach\Domain\Campaign\Support\Replacers\EmailListCampaignReplacer;
+use Spatie\Mailcoach\Domain\Campaign\Support\Replacers\SubscriberReplacer;
+use Spatie\Mailcoach\Domain\Campaign\Support\Replacers\UnsubscribeUrlReplacer;
+use Spatie\Mailcoach\Domain\Campaign\Support\Replacers\WebviewCampaignReplacer;
+use Spatie\Mailcoach\Domain\Shared\Actions\CalculateStatisticsAction;
+use Spatie\Mailcoach\Domain\Shared\Models\Send;
+use Spatie\Mailcoach\Domain\Shared\Support\Editor\TextEditor;
+use Spatie\Mailcoach\Domain\TransactionalMail\Actions\RenderTemplateAction;
+use Spatie\Mailcoach\Domain\TransactionalMail\Actions\SendTestForTransactionalMailTemplateAction;
+use Spatie\Mailcoach\Domain\TransactionalMail\Models\TransactionalMail;
+use Spatie\Mailcoach\Domain\TransactionalMail\Models\TransactionalMailTemplate;
+use Spatie\Mailcoach\Domain\TransactionalMail\Support\Replacers\SubjectReplacer;
+use Spatie\Mailcoach\Http\App\Middleware\Authenticate;
+use Spatie\Mailcoach\Http\App\Middleware\Authorize;
+use Spatie\Mailcoach\Http\App\Middleware\SetMailcoachDefaults;
+use Spatie\MailcoachMonaco\MonacoEditor;
+
 return [
     'campaigns' => [
         /*
@@ -13,18 +85,18 @@ return [
          * You can use a replacer to create placeholders.
          */
         'replacers' => [
-            \Spatie\Mailcoach\Domain\Campaign\Support\Replacers\WebviewCampaignReplacer::class,
-            \Spatie\Mailcoach\Domain\Campaign\Support\Replacers\SubscriberReplacer::class,
-            \Spatie\Mailcoach\Domain\Campaign\Support\Replacers\EmailListCampaignReplacer::class,
-            \Spatie\Mailcoach\Domain\Campaign\Support\Replacers\UnsubscribeUrlReplacer::class,
-            \Spatie\Mailcoach\Domain\Campaign\Support\Replacers\CampaignNameCampaignReplacer::class,
+            WebviewCampaignReplacer::class,
+            SubscriberReplacer::class,
+            EmailListCampaignReplacer::class,
+            UnsubscribeUrlReplacer::class,
+            CampaignNameCampaignReplacer::class,
         ],
 
         /*
          * Here you can configure which campaign template editor Mailcoach uses.
          * By default this is a text editor that highlights HTML.
          */
-        'editor' => \Spatie\MailcoachMonaco\MonacoEditor::class,
+        'editor' => MonacoEditor::class,
 
         /*
          * Here you can specify which jobs should run on which queues.
@@ -67,16 +139,16 @@ return [
          * Your custom action should always extend the one of the default ones.
          */
         'actions' => [
-            'prepare_email_html' => \Spatie\Mailcoach\Domain\Campaign\Actions\PrepareEmailHtmlAction::class,
-            'prepare_subject' => \Spatie\Mailcoach\Domain\Campaign\Actions\PrepareSubjectAction::class,
-            'prepare_webview_html' => \Spatie\Mailcoach\Domain\Campaign\Actions\PrepareWebviewHtmlAction::class,
-            'convert_html_to_text' => \Spatie\Mailcoach\Domain\Campaign\Actions\ConvertHtmlToTextAction::class,
-            'personalize_html' => \Spatie\Mailcoach\Domain\Campaign\Actions\PersonalizeHtmlAction::class,
-            'personalize_subject' => \Spatie\Mailcoach\Domain\Campaign\Actions\PersonalizeSubjectAction::class,
-            'retry_sending_failed_sends' => \Spatie\Mailcoach\Domain\Campaign\Actions\RetrySendingFailedSendsAction::class,
-            'send_campaign' => \Spatie\Mailcoach\Domain\Campaign\Actions\SendCampaignAction::class,
-            'send_mail' => \Spatie\Mailcoach\Domain\Campaign\Actions\SendMailAction::class,
-            'send_test_mail' => \Spatie\Mailcoach\Domain\Campaign\Actions\SendCampaignTestAction::class,
+            'prepare_email_html' => PrepareEmailHtmlAction::class,
+            'prepare_subject' => PrepareSubjectAction::class,
+            'prepare_webview_html' => PrepareWebviewHtmlAction::class,
+            'convert_html_to_text' => ConvertHtmlToTextAction::class,
+            'personalize_html' => PersonalizeHtmlAction::class,
+            'personalize_subject' => PersonalizeSubjectAction::class,
+            'retry_sending_failed_sends' => RetrySendingFailedSendsAction::class,
+            'send_campaign' => SendCampaignAction::class,
+            'send_mail' => SendMailAction::class,
+            'send_test_mail' => SendCampaignTestAction::class,
         ],
     ],
 
@@ -113,29 +185,29 @@ return [
          * Here you can configure which automation mail template editor Mailcoach uses.
          * By default this is a text editor that highlights HTML.
          */
-        'editor' => \Spatie\MailcoachMonaco\MonacoEditor::class,
+        'editor' => MonacoEditor::class,
 
         'actions' => [
-            'send_mail' => \Spatie\Mailcoach\Domain\Automation\Actions\SendMailAction::class,
-            'send_automation_mail_to_subscriber' => \Spatie\Mailcoach\Domain\Automation\Actions\SendAutomationMailToSubscriberAction::class,
-            'send_automation_mails_action' => \Spatie\Mailcoach\Domain\Automation\Actions\SendAutomationMailsAction::class,
-            'prepare_subject' => \Spatie\Mailcoach\Domain\Automation\Actions\PrepareSubjectAction::class,
-            'prepare_webview_html' => \Spatie\Mailcoach\Domain\Automation\Actions\PrepareWebviewHtmlAction::class,
+            'send_mail' => Spatie\Mailcoach\Domain\Automation\Actions\SendMailAction::class,
+            'send_automation_mail_to_subscriber' => SendAutomationMailToSubscriberAction::class,
+            'send_automation_mails_action' => SendAutomationMailsAction::class,
+            'prepare_subject' => Spatie\Mailcoach\Domain\Automation\Actions\PrepareSubjectAction::class,
+            'prepare_webview_html' => Spatie\Mailcoach\Domain\Automation\Actions\PrepareWebviewHtmlAction::class,
 
-            'convert_html_to_text' => \Spatie\Mailcoach\Domain\Automation\Actions\ConvertHtmlToTextAction::class,
-            'prepare_email_html' => \Spatie\Mailcoach\Domain\Automation\Actions\PrepareEmailHtmlAction::class,
-            'personalize_html' => \Spatie\Mailcoach\Domain\Automation\Actions\PersonalizeHtmlAction::class,
-            'personalize_subject' => \Spatie\Mailcoach\Domain\Automation\Actions\PersonalizeSubjectAction::class,
-            'send_test_mail' => \Spatie\Mailcoach\Domain\Automation\Actions\SendAutomationMailTestAction::class,
+            'convert_html_to_text' => Spatie\Mailcoach\Domain\Automation\Actions\ConvertHtmlToTextAction::class,
+            'prepare_email_html' => Spatie\Mailcoach\Domain\Automation\Actions\PrepareEmailHtmlAction::class,
+            'personalize_html' => Spatie\Mailcoach\Domain\Automation\Actions\PersonalizeHtmlAction::class,
+            'personalize_subject' => Spatie\Mailcoach\Domain\Automation\Actions\PersonalizeSubjectAction::class,
+            'send_test_mail' => SendAutomationMailTestAction::class,
 
-            'should_run_for_subscriber' => \Spatie\Mailcoach\Domain\Automation\Actions\ShouldAutomationRunForSubscriberAction::class,
+            'should_run_for_subscriber' => ShouldAutomationRunForSubscriberAction::class,
         ],
 
         'replacers' => [
-            \Spatie\Mailcoach\Domain\Automation\Support\Replacers\WebviewAutomationMailReplacer::class,
-            \Spatie\Mailcoach\Domain\Automation\Support\Replacers\SubscriberReplacer::class,
-            \Spatie\Mailcoach\Domain\Automation\Support\Replacers\UnsubscribeUrlReplacer::class,
-            \Spatie\Mailcoach\Domain\Automation\Support\Replacers\AutomationMailNameAutomationMailReplacer::class,
+            WebviewAutomationMailReplacer::class,
+            Spatie\Mailcoach\Domain\Automation\Support\Replacers\SubscriberReplacer::class,
+            Spatie\Mailcoach\Domain\Automation\Support\Replacers\UnsubscribeUrlReplacer::class,
+            AutomationMailNameAutomationMailReplacer::class,
         ],
 
         'flows' => [
@@ -145,14 +217,14 @@ return [
              * \Spatie\Mailcoach\Domain\Automation\Support\Actions\AutomationAction
              */
             'actions' => [
-                \Spatie\Mailcoach\Domain\Automation\Support\Actions\AddTagsAction::class,
-                \Spatie\Mailcoach\Domain\Automation\Support\Actions\SendAutomationMailAction::class,
-                \Spatie\Mailcoach\Domain\Automation\Support\Actions\ConditionAction::class,
-                \Spatie\Mailcoach\Domain\Automation\Support\Actions\SplitAction::class,
-                \Spatie\Mailcoach\Domain\Automation\Support\Actions\RemoveTagsAction::class,
-                \Spatie\Mailcoach\Domain\Automation\Support\Actions\WaitAction::class,
-                \Spatie\Mailcoach\Domain\Automation\Support\Actions\HaltAction::class,
-                \Spatie\Mailcoach\Domain\Automation\Support\Actions\UnsubscribeAction::class,
+                AddTagsAction::class,
+                SendAutomationMailAction::class,
+                ConditionAction::class,
+                SplitAction::class,
+                RemoveTagsAction::class,
+                WaitAction::class,
+                HaltAction::class,
+                UnsubscribeAction::class,
             ],
 
             /**
@@ -161,12 +233,12 @@ return [
              * \Spatie\Mailcoach\Domain\Automation\Support\Triggers\AutomationTrigger
              */
             'triggers' => [
-                \Spatie\Mailcoach\Domain\Automation\Support\Triggers\NoTrigger::class,
-                \Spatie\Mailcoach\Domain\Automation\Support\Triggers\SubscribedTrigger::class,
-                \Spatie\Mailcoach\Domain\Automation\Support\Triggers\DateTrigger::class,
-                \Spatie\Mailcoach\Domain\Automation\Support\Triggers\TagAddedTrigger::class,
-                \Spatie\Mailcoach\Domain\Automation\Support\Triggers\TagRemovedTrigger::class,
-                \Spatie\Mailcoach\Domain\Automation\Support\Triggers\WebhookTrigger::class,
+                NoTrigger::class,
+                SubscribedTrigger::class,
+                DateTrigger::class,
+                TagAddedTrigger::class,
+                TagRemovedTrigger::class,
+                WebhookTrigger::class,
             ],
 
             /**
@@ -190,13 +262,13 @@ return [
 
     'audience' => [
         'actions' => [
-            'confirm_subscriber' => \Spatie\Mailcoach\Domain\Audience\Actions\Subscribers\ConfirmSubscriberAction::class,
-            'create_subscriber' => \Spatie\Mailcoach\Domain\Audience\Actions\Subscribers\CreateSubscriberAction::class,
-            'delete_subscriber' => \Spatie\Mailcoach\Domain\Audience\Actions\Subscribers\DeleteSubscriberAction::class,
-            'import_subscribers' => \Spatie\Mailcoach\Domain\Audience\Actions\Subscribers\ImportSubscribersAction::class,
-            'send_confirm_subscriber_mail' => \Spatie\Mailcoach\Domain\Audience\Actions\Subscribers\SendConfirmSubscriberMailAction::class,
-            'send_welcome_mail' => \Spatie\Mailcoach\Domain\Audience\Actions\Subscribers\SendWelcomeMailAction::class,
-            'update_subscriber' => \Spatie\Mailcoach\Domain\Audience\Actions\Subscribers\UpdateSubscriberAction::class,
+            'confirm_subscriber' => ConfirmSubscriberAction::class,
+            'create_subscriber' => CreateSubscriberAction::class,
+            'delete_subscriber' => DeleteSubscriberAction::class,
+            'import_subscribers' => ImportSubscribersAction::class,
+            'send_confirm_subscriber_mail' => SendConfirmSubscriberMailAction::class,
+            'send_welcome_mail' => SendWelcomeMailAction::class,
+            'update_subscriber' => UpdateSubscriberAction::class,
         ],
 
         /*
@@ -217,19 +289,19 @@ return [
          * You can use replacers to create placeholders.
          */
         'replacers' => [
-            'subject' => \Spatie\Mailcoach\Domain\TransactionalMail\Support\Replacers\SubjectReplacer::class,
+            'subject' => SubjectReplacer::class,
         ],
 
         'actions' => [
-            'send_test' => \Spatie\Mailcoach\Domain\TransactionalMail\Actions\SendTestForTransactionalMailTemplateAction::class,
-            'render_template' => \Spatie\Mailcoach\Domain\TransactionalMail\Actions\RenderTemplateAction::class,
+            'send_test' => SendTestForTransactionalMailTemplateAction::class,
+            'render_template' => RenderTemplateAction::class,
         ],
 
         /**
          * Here you can configure which transactional mail template editor Mailcoach uses.
          * By default this is a text editor that highlights HTML.
          */
-        'editor' => \Spatie\Mailcoach\Domain\Shared\Support\Editor\TextEditor::class,
+        'editor' => TextEditor::class,
     ],
 
     'shared' => [
@@ -242,7 +314,7 @@ return [
         ],
 
         'actions' => [
-            'calculate_statistics' => \Spatie\Mailcoach\Domain\Shared\Actions\CalculateStatisticsAction::class,
+            'calculate_statistics' => CalculateStatisticsAction::class,
         ],
     ],
 
@@ -282,9 +354,9 @@ return [
     'middleware' => [
         'web' => [
             'web',
-            Spatie\Mailcoach\Http\App\Middleware\Authenticate::class,
-            Spatie\Mailcoach\Http\App\Middleware\Authorize::class,
-            Spatie\Mailcoach\Http\App\Middleware\SetMailcoachDefaults::class,
+            Authenticate::class,
+            Authorize::class,
+            SetMailcoachDefaults::class,
         ],
         'api' => [
             'api',
@@ -298,139 +370,139 @@ return [
          * extend the `Spatie\Mailcoach\Domain\Campaign\Models\Campaign::class`
          * model.
          */
-        'campaign' => Spatie\Mailcoach\Domain\Campaign\Models\Campaign::class,
+        'campaign' => Campaign::class,
 
         /*
          * The model you want to use as a CampaignLink model. It needs to be or
          * extend the `Spatie\Mailcoach\Domain\Campaign\Models\CampaignLink::class`
          * model.
          */
-        'campaign_link' => \Spatie\Mailcoach\Domain\Campaign\Models\CampaignLink::class,
+        'campaign_link' => CampaignLink::class,
 
         /*
          * The model you want to use as a CampaignClick model. It needs to be or
          * extend the `Spatie\Mailcoach\Domain\Campaign\Models\CampaignClick::class`
          * model.
          */
-        'campaign_click' => \Spatie\Mailcoach\Domain\Campaign\Models\CampaignClick::class,
+        'campaign_click' => CampaignClick::class,
 
         /*
          * The model you want to use as a CampaignOpen model. It needs to be or
          * extend the `Spatie\Mailcoach\Domain\Campaign\Models\CampaignOpen::class`
          * model.
          */
-        'campaign_open' => \Spatie\Mailcoach\Domain\Campaign\Models\CampaignOpen::class,
+        'campaign_open' => CampaignOpen::class,
 
         /*
          * The model you want to use as a CampaignUnsubscribe model. It needs to be or
          * extend the `Spatie\Mailcoach\Domain\Campaign\Models\CampaignUnsubscribe::class`
          * model.
          */
-        'campaign_unsubscribe' => \Spatie\Mailcoach\Domain\Campaign\Models\CampaignUnsubscribe::class,
+        'campaign_unsubscribe' => CampaignUnsubscribe::class,
 
         /*
          * The model you want to use as a EmailList model. It needs to be or
          * extend the `Spatie\Mailcoach\Domain\Audience\Models\EmailList::class`
          * model.
          */
-        'email_list' => \Spatie\Mailcoach\Domain\Audience\Models\EmailList::class,
+        'email_list' => EmailList::class,
 
         /*
          * The model you want to use as a Send model. It needs to be or
          * extend the `Spatie\Mailcoach\Domain\Shared\Models\Send::class`
          * model.
          */
-        'send' => \Spatie\Mailcoach\Domain\Shared\Models\Send::class,
+        'send' => Send::class,
 
         /*
          * The model you want to use as a Subscriber model. It needs to be or
          * extend the `Spatie\Mailcoach\Domain\Audience\Models\Subscriber::class`
          * model.
          */
-        'subscriber' => \Spatie\Mailcoach\Domain\Audience\Models\Subscriber::class,
+        'subscriber' => Subscriber::class,
 
         /*
          * The model you want to use as a Template model. It needs to be or
          * extend the `Spatie\Mailcoach\Domain\Campaign\Models\Template::class`
          * model.
          */
-        'template' => Spatie\Mailcoach\Domain\Campaign\Models\Template::class,
+        'template' => Template::class,
 
         /*
          * The model you want to use as a TransactionalMail model. It needs to be or
          * extend the `Spatie\Mailcoach\Domain\TransactionalMail\Models\TransactionalMail::class`
          * model.
          */
-        'transactional_mail' => \Spatie\Mailcoach\Domain\TransactionalMail\Models\TransactionalMail::class,
+        'transactional_mail' => TransactionalMail::class,
 
         /*
          * The model you want to use as a TransactionalMailTemplate model. It needs to be or
          * extend the `\Spatie\Mailcoach\Domain\TransactionalMail\Models\TransactionalMailTemplate::class`
          * model.
          */
-        'transactional_mail_template' => \Spatie\Mailcoach\Domain\TransactionalMail\Models\TransactionalMailTemplate::class,
+        'transactional_mail_template' => TransactionalMailTemplate::class,
 
         /*
          * The model you want to use as an Automation model. It needs to be or
          * extend the `\Spatie\Mailcoach\Domain\Automation\Models\Automation::class`
          * model.
          */
-        'automation' => \Spatie\Mailcoach\Domain\Automation\Models\Automation::class,
+        'automation' => Automation::class,
 
         /*
          * The model you want to use as an Action model. It needs to be or
          * extend the `\Spatie\Mailcoach\Domain\Automation\Models\Action::class`
          * model.
          */
-        'automation_action' => \Spatie\Mailcoach\Domain\Automation\Models\Action::class,
+        'automation_action' => Action::class,
 
         /*
          * The model you want to use as a Trigger model. It needs to be or
          * extend the `\Spatie\Mailcoach\Domain\Automation\Models\Trigger::class`
          * model.
          */
-        'automation_trigger' => \Spatie\Mailcoach\Domain\Automation\Models\Trigger::class,
+        'automation_trigger' => Trigger::class,
 
         /*
          * The model you want to use as an Automation mail model. It needs to be or
          * extend the `\Spatie\Mailcoach\Domain\Automation\Models\AutomationMail::class` model.
          */
-        'automation_mail' => \Spatie\Mailcoach\Domain\Automation\Models\AutomationMail::class,
+        'automation_mail' => AutomationMail::class,
 
         /*
          * The model you want to use as a Campaign model. It needs to be or
          * extend the `Spatie\Mailcoach\Domain\Automation\Models\AutomationMailLink::class`
          * model.
          */
-        'automation_mail_link' => \Spatie\Mailcoach\Domain\Automation\Models\AutomationMailLink::class,
+        'automation_mail_link' => AutomationMailLink::class,
 
         /*
          * The model you want to use as a Campaign model. It needs to be or
          * extend the `Spatie\Mailcoach\Domain\Automation\Models\AutomationMailClick::class`
          * model.
          */
-        'automation_mail_click' => \Spatie\Mailcoach\Domain\Automation\Models\AutomationMailClick::class,
+        'automation_mail_click' => AutomationMailClick::class,
 
         /*
          * The model you want to use as a Campaign model. It needs to be or
          * extend the `Spatie\Mailcoach\Domain\Automation\Models\AutomationMailOpen::class`
          * model.
          */
-        'automation_mail_open' => \Spatie\Mailcoach\Domain\Automation\Models\AutomationMailOpen::class,
+        'automation_mail_open' => AutomationMailOpen::class,
 
         /*
          * The model you want to use as a Campaign model. It needs to be or
          * extend the `Spatie\Mailcoach\Domain\Automation\Models\AutomationMailUnsubscribe::class`
          * model.
          */
-        'automation_mail_unsubscribe' => \Spatie\Mailcoach\Domain\Automation\Models\AutomationMailUnsubscribe::class,
+        'automation_mail_unsubscribe' => AutomationMailUnsubscribe::class,
 
         /*
          * The model you want to use as the pivot between an Automation Action model
          * and the Subscriber model. It needs to be or extend the
          * `\Spatie\Mailcoach\Domain\Automation\Models\ActionSubscriber::class` model.
          */
-        'action_subscriber' => \Spatie\Mailcoach\Domain\Automation\Models\ActionSubscriber::class,
+        'action_subscriber' => ActionSubscriber::class,
     ],
 
     'views' => [

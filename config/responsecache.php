@@ -1,5 +1,9 @@
 <?php
 
+use App\Services\ResponseCache\CacheAllGuestRequests;
+use Spatie\ResponseCache\Hasher\DefaultHasher;
+use Spatie\ResponseCache\Replacers\CsrfTokenReplacer;
+
 return [
     /*
      * Determine if the response cache middleware should be enabled.
@@ -13,7 +17,7 @@ return [
      *  You can provide your own class given that it implements the
      *  CacheProfile interface.
      */
-    'cache_profile' => \App\Services\ResponseCache\CacheAllGuestRequests::class,
+    'cache_profile' => CacheAllGuestRequests::class,
 
     /*
      * When using the default CacheRequestFilter this setting controls the
@@ -40,7 +44,7 @@ return [
      * Each replacer must implement the Replacer interface.
      */
     'replacers' => [
-        \Spatie\ResponseCache\Replacers\CsrfTokenReplacer::class,
+        CsrfTokenReplacer::class,
     ],
 
     /*
@@ -56,5 +60,5 @@ return [
      * This class is responsible for generating a hash for a request. This hash
      * is used to look up an cached response.
      */
-    'hasher' => \Spatie\ResponseCache\Hasher\DefaultHasher::class,
+    'hasher' => DefaultHasher::class,
 ];

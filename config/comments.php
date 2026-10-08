@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\User;
 use Spatie\Comments\Actions\ApproveCommentAction;
 use Spatie\Comments\Actions\ProcessCommentAction;
 use Spatie\Comments\Actions\RejectCommentAction;
@@ -7,6 +8,7 @@ use Spatie\Comments\Actions\SendNotificationsForApprovedCommentAction;
 use Spatie\Comments\Actions\SendNotificationsForPendingCommentAction;
 use Spatie\Comments\CommentTransformers\MarkdownToHtmlTransformer;
 use Spatie\Comments\Models\Comment;
+use Spatie\Comments\Models\CommentNotificationOptOut;
 use Spatie\Comments\Models\CommentNotificationSubscription;
 use Spatie\Comments\Models\Reaction;
 use Spatie\Comments\Notifications\ApprovedCommentNotification;
@@ -40,7 +42,7 @@ return [
          * The class that will comment on other things. Typically, this
          * would be a user model.
          */
-        'commentator' => \App\Models\User::class,
+        'commentator' => User::class,
 
         /*
          * The model you want to use as a Comment model. It needs to be or
@@ -60,7 +62,7 @@ return [
          */
         'comment_notification_subscription' => CommentNotificationSubscription::class,
 
-        'comment_notification_opt_out' => \Spatie\Comments\Models\CommentNotificationOptOut::class,
+        'comment_notification_opt_out' => CommentNotificationOptOut::class,
     ],
 
     'notifications' => [

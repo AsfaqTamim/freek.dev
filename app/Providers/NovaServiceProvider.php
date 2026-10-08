@@ -49,7 +49,7 @@ class NovaServiceProvider extends NovaApplicationServiceProvider
     protected function dashboards()
     {
         return [
-            new Main(),
+            new Main,
         ];
     }
 }

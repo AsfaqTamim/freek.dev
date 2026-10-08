@@ -72,7 +72,7 @@ class Link extends Resource
                         : true;
                 }),
 
-            (new RejectLink())
+            (new RejectLink)
                 ->confirmText('Are you sure you want to reject this link?')
                 ->confirmButtonText('Reject')
                 ->cancelButtonText("Don't reject")

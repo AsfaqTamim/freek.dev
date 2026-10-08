@@ -26,7 +26,7 @@ use Spatie\ResponseCache\Facades\ResponseCache;
 use Spatie\Tags\HasTags;
 use Spatie\Tags\Tag;
 
-class Post extends Model implements Feedable, Sluggable, HasMedia
+class Post extends Model implements Feedable, HasMedia, Sluggable
 {
     public const TYPE_LINK = 'link';
 
@@ -34,12 +34,12 @@ class Post extends Model implements Feedable, Sluggable, HasMedia
 
     public const TYPE_ORIGINAL = 'originalPost';
 
-    use HasSlug,
-        HasTags,
-        PostPresenter,
+    use HasComments,
         HasFactory,
-        HasComments,
-        InteractsWithMedia;
+        HasSlug,
+        HasTags,
+        InteractsWithMedia,
+        PostPresenter;
 
     public $with = ['tags'];
 
@@ -59,18 +59,18 @@ class Post extends Model implements Feedable, Sluggable, HasMedia
 
         static::saved(function (Post $post) {
             static::withoutEvents(function () use ($post) {
-                (new ConvertPostTextToHtmlAction())->execute($post);
+                (new ConvertPostTextToHtmlAction)->execute($post);
 
                 if ($post->isPartOfSeries()) {
                     $post->getAllPostsInSeries()->each(function (Post $post) {
-                        (new ConvertPostTextToHtmlAction())->execute($post);
+                        (new ConvertPostTextToHtmlAction)->execute($post);
                     });
                 }
             });
 
             if ($post->published) {
                 static::withoutEvents(function () use ($post) {
-                    (new PublishPostAction())->execute($post);
+                    (new PublishPostAction)->execute($post);
                 });
 
                 return;

@@ -17,7 +17,7 @@ class RejectLink extends Action
     public function handle(ActionFields $fields, Collection $models)
     {
         $models->each(function (Link $link) {
-            (new RejectLinkAction())->execute($link);
+            (new RejectLinkAction)->execute($link);
         });
 
         return Action::message('The link was rejected!');

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Discovery\Newsletter;
 
 use Spatie\Mailcoach\Domain\Campaign\Models\Campaign;
 use Spatie\RouteDiscovery\Attributes\Route;
+
 use function view;
 
 #[Route(middleware: 'doNotCacheResponse')]

@@ -2,12 +2,13 @@
 
 use App\Mail\LinkApprovedMail;
 use App\Models\Link;
+
 use function Pest\Laravel\get;
 
 it('can approve a link using a signed url', function () {
     Mail::fake();
 
-    /** @var \App\Models\Link $link */
+    /** @var Link $link */
     $link = Link::factory()->create([
         'status' => Link::STATUS_SUBMITTED,
     ]);

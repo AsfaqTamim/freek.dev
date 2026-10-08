@@ -6,7 +6,7 @@ use App\Models\Link;
 it('can create a post from a link', function () {
     $link = Link::factory()->create();
 
-    (new CreatePostFromLinkAction())->execute($link);
+    (new CreatePostFromLinkAction)->execute($link);
 
     $this->assertDatabaseHas('posts', [
         'submitted_by_user_id' => $link->user_id,

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Discovery;
 
 use App\Models\Post;
 use Spatie\RouteDiscovery\Attributes\Route;
+
 use function view;
 
 class HomeController
